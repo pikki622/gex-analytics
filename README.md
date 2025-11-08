@@ -1,14 +1,60 @@
-# Gamma Exposure (GEX) Profile Analysis Tool
+# Gamma Exposure (GEX) Analytics 📊
 
-A Python tool that analyzes options market gamma exposure for major indices, providing insights into market maker positioning and potential support/resistance levels.
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+[![Data Source](https://img.shields.io/badge/Data-CBOE-orange)](https://www.cboe.com/)
+[![Package Manager](https://img.shields.io/badge/Package%20Manager-uv-purple)](https://github.com/astral-sh/uv)
 
-## Table of Contents
+> Real-time options market gamma exposure analysis for major indices - identify dealer hedging flows and key support/resistance levels
+
+## 🚀 Quick Start
+
+```bash
+# Clone the repository
+git clone https://github.com/pikki622/gex-analytics.git
+cd gex-analytics
+
+# Install dependencies with uv
+uv sync
+
+# Run gamma analysis for S&P 500
+uv run python gammaProfileCommandLine10bps.py SPX
+```
+
+## 📊 What This Tool Does
+
+Analyzes options market gamma exposure to reveal:
+- 🎯 **Gamma flip points** - Where dealer hedging behavior reverses
+- 📈 **Support/Resistance levels** - Based on options positioning
+- ⚡ **Volatility forecasts** - Whether dealers amplify or dampen moves
+- 💰 **Hedging flow estimates** - Dollar amounts dealers must trade
+
+## 📋 Table of Contents
+- [Features](#features)
 - [How It Works](#how-it-works)
-- [Key Concepts](#key-concepts)
-- [Code Architecture](#code-architecture)
-- [Available Tickers](#available-tickers)
+- [Installation](#installation)
 - [Usage](#usage)
+- [Available Tickers](#available-tickers)
 - [Output Charts](#output-charts)
+- [Interpretation Guide](#interpretation-guide)
+- [Development Roadmap](#development-roadmap)
+- [Contributing](#contributing)
+
+## ✨ Features
+
+### Current Capabilities
+- ✅ **10 Major Indices** - SPX, NDX, RUT, VIX, and more
+- ✅ **Real-time Data** - 15-minute delayed quotes from CBOE
+- ✅ **Two Analysis Modes** - 1% moves or precise 10bps moves
+- ✅ **5-Panel Visualization** - Comprehensive gamma analysis charts
+- ✅ **ADTV Context** - Hedging flows relative to daily volume
+- ✅ **Batch Processing** - Generate reports for all indices at once
+
+### Coming Soon (See [Roadmap](IMPLEMENTATION_PLAN.md))
+- 🔄 Visual hierarchy with risk indicators
+- 🔄 Trade setup recommendations
+- 🔄 Historical gamma tracking
+- 🔄 Cross-index correlation analysis
 
 ## How It Works
 
@@ -119,38 +165,60 @@ The tool works with CBOE-listed index options through their free API. ETF option
 
 ETF options (SPY, QQQ, IWM, etc.) return HTTP 403 errors and require a CBOE DataShop subscription ($380-2000+/month).
 
-## Usage
+## 📦 Installation
 
-### Setup with uv Package Manager
+### Prerequisites
+- Python 3.8 or higher
+- [uv package manager](https://github.com/astral-sh/uv) (recommended) or pip
 
+### Option 1: Using uv (Recommended)
 ```bash
-# Initialize project (already done)
-uv init --no-readme
+# Install uv if you haven't already
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Clone and setup
+git clone https://github.com/pikki622/gex-analytics.git
+cd gex-analytics
+uv sync
+```
+
+### Option 2: Using pip
+```bash
+# Clone repository
+git clone https://github.com/pikki622/gex-analytics.git
+cd gex-analytics
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
-uv sync
+pip install pandas numpy scipy matplotlib requests
+```
 
-# Run the original 1% gamma script
-uv run python gammaProfileCommandLine.py SPX
+## 🎯 Usage
 
-# Run the 10bps (0.1%) gamma script with grid layout
-uv run python gammaProfileCommandLine10bps.py NDX
+### Quick Examples
+
+```bash
+# Analyze S&P 500 with 10bps precision (recommended)
+uv run python gammaProfileCommandLine10bps.py SPX
+
+# Generate comprehensive report for all indices
+uv run python generate_all_charts.py
+
+# Test which tickers are available
+uv run python test_tickers.py
 ```
 
 ### Available Scripts
 
-1. **gammaProfileCommandLine.py** - Original version
-   - Calculates gamma per 1% (100bps) move
-   - Shows charts one at a time (close to see next)
-
-2. **gammaProfileCommandLine10bps.py** - Enhanced version
-   - Calculates gamma per 0.1% (10bps) move
-   - Displays all 4 charts in a single grid
-   - Better for precise hedging analysis
-
-3. **test_tickers.py** - Ticker availability tester
-   - Tests which tickers work with the API
-   - Provides current spot prices
+| Script | Description | Use Case |
+|--------|-------------|----------|
+| `gammaProfileCommandLine10bps.py` | **Recommended** - 10bps precision with grid layout | Daily analysis |
+| `gammaProfileCommandLine.py` | Original 1% move analysis | Quick checks |
+| `generate_all_charts.py` | Batch process all indices | Full market scan |
+| `test_tickers.py` | Check ticker availability | Troubleshooting |
 
 ### Example Commands
 
@@ -165,9 +233,17 @@ uv run python gammaProfileCommandLine10bps.py NDX
 uv run python test_tickers.py
 ```
 
+## 📊 Example Output
+
+The tool generates a comprehensive 5-panel analysis (10bps version includes ADTV table):
+
+![Example SPX Gamma Analysis](charts/SPX_gamma_analysis.png)
+
+*Example output for S&P 500 showing gamma exposure, open interest distribution, and flip points*
+
 ## Output Charts
 
-The tool generates 4 comprehensive visualizations:
+The tool generates 5 comprehensive visualizations:
 
 ### Chart 1: Total Gamma Exposure
 - Bar chart showing net gamma at each strike price
@@ -190,6 +266,12 @@ The tool generates 4 comprehensive visualizations:
 - Shows ex-next expiry and ex-monthly expiry profiles
 - Red shading = negative gamma zone (volatility amplifying)
 - Green shading = positive gamma zone (volatility dampening)
+
+### Chart 5: Gamma Impact Table (10bps version)
+- Shows gamma exposure for different move sizes (1-500bps)
+- Contextualizes hedging flows vs 20-day ADTV
+- Highlights when flows exceed 10% of daily volume
+- Critical for understanding market impact potential
 
 ## Interpretation Guide
 
@@ -214,3 +296,55 @@ The tool generates 4 comprehensive visualizations:
 ## Data Source
 
 Options data is sourced from CBOE's delayed quotes API (15-minute delay). Real-time data requires CBOE subscription.
+
+## 🗺️ Development Roadmap
+
+See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the detailed roadmap. Key upcoming features:
+
+### Phase 1 (In Progress)
+- ✅ Documentation improvements
+- 🔄 Visual hierarchy with risk indicators
+- 🔄 Glossary and terminology guide
+
+### Phase 2 (Next Week)
+- Trade setup recommendations
+- Scenario analysis engine
+- Risk management guidelines
+
+### Phase 3 (Future)
+- Historical gamma tracking
+- Enhanced visualizations
+- Cross-index correlation analysis
+
+## 🤝 Contributing
+
+We welcome contributions! Here's how to get started:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Run tests (when available)
+5. Commit with descriptive message (`git commit -m 'Add amazing feature'`)
+6. Push to your branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
+
+Please use the PR template and follow the coding standards in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md#review-checklist-for-each-pr).
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- CBOE for providing options data API
+- The options trading community for gamma exposure concepts
+- Contributors and users providing feedback
+
+## 📧 Contact
+
+- GitHub Issues: [Report bugs or request features](https://github.com/pikki622/gex-analytics/issues)
+- Repository: [github.com/pikki622/gex-analytics](https://github.com/pikki622/gex-analytics)
+
+---
+
+*If you find this tool useful, please ⭐ the repository!*
