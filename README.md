@@ -37,6 +37,7 @@ Analyzes options market gamma exposure to reveal:
 - [Available Tickers](#available-tickers)
 - [Output Charts](#output-charts)
 - [Interpretation Guide](#interpretation-guide)
+- [📚 Terminology Guide](docs/terminology.md)
 - [Development Roadmap](#development-roadmap)
 - [Contributing](#contributing)
 
@@ -274,6 +275,13 @@ The tool generates 5 comprehensive visualizations:
 - Critical for understanding market impact potential
 
 ## Interpretation Guide
+
+### 🆕 New to Options?
+Check out our comprehensive guides:
+- [**Terminology Guide**](docs/terminology.md) - Plain English explanations of all terms
+- [**FAQ**](docs/FAQ.md) - Quick answers to common questions
+- Real-world examples and decision trees
+- Trading strategies based on gamma state
 
 ### Key Metrics
 - **Total Gamma**: Net $ exposure market makers must hedge per 1% or 0.1% move
