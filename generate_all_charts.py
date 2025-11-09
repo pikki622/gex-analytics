@@ -42,7 +42,7 @@ def process_ticker(index, output_dir="charts"):
     """Process a single ticker and save charts"""
 
     print(f"\n{'='*60}")
-    print(f"Processing {index}...")
+    print(f"📈 Processing {index}...")
     print(f"{'='*60}")
 
     try:
@@ -165,7 +165,11 @@ def process_ticker(index, output_dir="charts"):
 
         # CREATE 2x3 GRID OF ALL CHARTS (INCLUDING TABLE)
         fig = plt.figure(figsize=(20, 12), constrained_layout=True)
-        fig.suptitle(f'Gamma Exposure Analysis - {index} - {todayDate.strftime("%d %b %Y")}', fontsize=16, fontweight='bold')
+        # Determine overall risk level for title
+        total_gamma = df['TotalGamma'].sum()
+        risk_emoji = '🔴' if abs(total_gamma) > 0.2 else '🟡' if abs(total_gamma) > 0.05 else '🟢'
+
+        fig.suptitle(f'{risk_emoji} Gamma Exposure Analysis - {index} - {todayDate.strftime("%d %b %Y")}', fontsize=16, fontweight='bold')
 
         # Create grid spec for 2x3 layout
         gs = fig.add_gridspec(2, 3)
@@ -305,16 +309,21 @@ def process_ticker(index, output_dir="charts"):
             table[(0, i)].set_facecolor('#40466e')
             table[(0, i)].set_text_props(weight='bold', color='white')
 
-        # Color code the rows based on gamma size
+        # Enhanced color coding with risk-based visual hierarchy
         for i in range(1, len(table_data) + 1):
             gamma_val = float(table_data[i-1][1].replace('$', '').replace('+', ''))
+            adtv_ratio = float(table_data[i-1][3].split('(')[1].split('x')[0]) if '(' in table_data[i-1][3] else 0
 
-            # Color intensity based on magnitude
-            if abs(gamma_val) > 10:
+            # Color intensity based on risk level (magnitude + ADTV impact)
+            if abs(gamma_val) > 10 or adtv_ratio > 0.5:  # CRITICAL RISK
+                color = '#ff4444' if gamma_val < 0 else '#44ff44'
+                table[(i, 1)].set_text_props(weight='bold')
+                table[(i, 3)].set_text_props(weight='bold')
+            elif abs(gamma_val) > 5 or adtv_ratio > 0.3:  # HIGH RISK
+                color = '#ff9999' if gamma_val < 0 else '#99ff99'
+            elif abs(gamma_val) > 2 or adtv_ratio > 0.1:  # MEDIUM RISK
                 color = '#ffcccc' if gamma_val < 0 else '#ccffcc'
-            elif abs(gamma_val) > 5:
-                color = '#ffe6e6' if gamma_val < 0 else '#e6ffe6'
-            else:
+            else:  # LOW RISK
                 color = '#f9f9f9'
 
             for j in range(len(headers)):
@@ -343,12 +352,30 @@ def process_ticker(index, output_dir="charts"):
 
         print(f"✓ Charts saved to {filename}")
 
+        # Calculate ADTV context
+        adtv_estimates = {
+            'SPX': 250, 'NDX': 100, 'RUT': 50, 'VIX': 30,
+            'DJX': 10, 'XSP': 20, 'XND': 10, 'MRUT': 5,
+            'MXEA': 5, 'MXEF': 5
+        }
+        adtv = adtv_estimates.get(index, 10)
+        total_gamma_bn = df['TotalGamma'].sum()
+        adtv_pct = (abs(total_gamma_bn) / adtv) * 100 if adtv > 0 else 0
+
+        # Print gamma exposure with ADTV context
+        print(f"\n💰 Total Gamma Exposure: ${total_gamma_bn:.2f}Bn per 10bps move ({adtv_pct:.1f}% of 20D ADTV)")
+        if zeroGamma != 0:
+            distance_to_flip = ((zeroGamma - spotPrice) / spotPrice) * 100
+            print(f"🎯 Gamma Flip at: ${zeroGamma:.2f} ({distance_to_flip:+.2f}% from spot)")
+
         # Return summary statistics
         return {
             'ticker': index,
             'spot_price': spotPrice,
-            'total_gamma': df['TotalGamma'].sum(),
+            'total_gamma': total_gamma_bn,
             'gamma_flip': zeroGamma if zeroGamma != 0 else None,
+            'adtv': adtv,
+            'adtv_pct': adtv_pct,
             'filename': filename
         }
 
@@ -384,22 +411,69 @@ def main():
             result['description'] = description
             results.append(result)
 
-    # Create summary report
+    # Create summary report with visual hierarchy
     print("\n" + "="*60)
-    print("SUMMARY REPORT")
+    print("📊 GAMMA EXPOSURE SUMMARY REPORT")
     print("="*60)
 
     if results:
         summary_df = pd.DataFrame(results)
-        summary_df = summary_df[['ticker', 'description', 'spot_price', 'total_gamma', 'gamma_flip']]
-        summary_df.columns = ['Ticker', 'Description', 'Spot Price', 'Total Gamma (Bn/10bps)', 'Gamma Flip']
+        summary_df = summary_df[['ticker', 'description', 'spot_price', 'total_gamma', 'gamma_flip', 'adtv', 'adtv_pct']]
 
+        # Add ADTV-contextualized gamma column
+        summary_df['gamma_with_adtv'] = summary_df.apply(
+            lambda row: f"${row['total_gamma']:.2f}Bn ({row['adtv_pct']:.1f}% ADTV)",
+            axis=1
+        )
+
+        # Add risk indicators and market state
+        def get_risk_indicator(gamma_value, adtv_pct):
+            """Assign risk level based on gamma magnitude and ADTV impact"""
+            abs_gamma = abs(gamma_value)
+            if abs_gamma > 0.2 or adtv_pct > 10:  # High gamma or high ADTV impact
+                return '🔴'  # High risk
+            elif abs_gamma > 0.05 or adtv_pct > 5:
+                return '🟡'  # Medium risk
+            else:
+                return '🟢'  # Low risk
+
+        def get_market_state(gamma_value, spot, flip):
+            """Determine market state from gamma and flip point"""
+            if pd.isna(flip) or flip == 0:
+                return '➖'  # No clear flip
+            elif spot < flip:
+                return '📉'  # Below flip (negative gamma zone)
+            else:
+                return '📈'  # Above flip (positive gamma zone)
+
+        # Add indicators
+        summary_df['Risk'] = summary_df.apply(lambda row: get_risk_indicator(row['total_gamma'], row['adtv_pct']), axis=1)
+        summary_df['State'] = summary_df.apply(
+            lambda row: get_market_state(row['total_gamma'], row['spot_price'], row['gamma_flip']),
+            axis=1
+        )
+
+        # Reorder columns for better visual hierarchy with ADTV context
+        summary_df = summary_df[['Risk', 'State', 'ticker', 'description', 'spot_price', 'gamma_with_adtv', 'gamma_flip']]
+        summary_df.columns = ['Risk', 'State', 'Ticker', 'Description', 'Spot Price', 'Gamma (Bn/10bps + ADTV%)', 'Gamma Flip']
+
+        # Print enhanced summary
+        print("\n🎯 KEY INDICATORS:")
+        print("  Risk Levels: 🔴 High | 🟡 Medium | 🟢 Low")
+        print("  Market State: 📈 Above Flip (Positive Gamma) | 📉 Below Flip (Negative Gamma)")
         print("\n" + summary_df.to_string(index=False))
 
-        # Save summary to CSV
+        # Save enhanced summary to CSV
         summary_df.to_csv('charts/summary.csv', index=False)
-        print(f"\n✓ Summary saved to charts/summary.csv")
-        print(f"✓ All charts saved to charts/ directory")
+        print(f"\n✅ Summary saved to charts/summary.csv")
+        print(f"✅ All charts saved to charts/ directory")
+
+        # Print critical alerts
+        high_risk = summary_df[summary_df['Risk'] == '🔴']
+        if not high_risk.empty:
+            print(f"\n⚠️  HIGH RISK ALERTS:")
+            for _, row in high_risk.iterrows():
+                print(f"   • {row['Ticker']}: {row['Gamma (Bn/10bps + ADTV%)']}")
 
     return results
 
